@@ -29,8 +29,6 @@ extern "C" {
 
 void doKernelSetup();
 
-void doKernelSetup2();
-
 void revertKernelHook();
 
 #ifdef __cplusplus

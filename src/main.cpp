@@ -27,7 +27,6 @@
 #include <coreinit/filesystem.h>
 #include <whb/sdcard.h>
 #include <sys/stat.h>
-#include <cstdio>
 #include <string>
 #include <vpad/input.h>
 #include <vector>

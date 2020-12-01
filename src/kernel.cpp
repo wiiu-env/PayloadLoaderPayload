@@ -30,26 +30,6 @@ extern "C" void KernelPatches(void);
 
 void __attribute__ ((noinline)) kern_write(void *addr, uint32_t value);
 
-extern "C" void SC_0x25_KernelCopyData(unsigned int addr, unsigned int src, unsigned int len);
-
-extern "C" void SCKernelCopyData(unsigned int addr, unsigned int src, unsigned int len);
-
-void KernelWriteU32(uint32_t addr, uint32_t value) {
-    ICInvalidateRange(&value, 4);
-    DCFlushRange(&value, 4);
-
-    auto dst = (uint32_t) OSEffectiveToPhysical(addr);
-    auto src = (uint32_t) OSEffectiveToPhysical((uint32_t) &value);
-
-    SC_0x25_KernelCopyData(dst, src, 4);
-
-    DCFlushRange((void *) addr, 4);
-    ICInvalidateRange((void *) addr, 4);
-}
-
-void revertMainHook() {
-    KernelWriteU32(0x0101c56c, 0x4E800421);
-}
 
 void doKernelSetup() {
     kern_write((void *) (KERN_SYSCALL_TBL_1 + (0x36 * 4)), (unsigned int) KernelPatches);
