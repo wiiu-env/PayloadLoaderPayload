@@ -3,7 +3,7 @@ This payload.elf loader which can be used with any `payload.elf` loader. (For ex
 
 ## Usage
 Place the `payload.elf` in the `sd:/wiiu` folder of your sd card and run a exploit which loads `payload.elf`.
-Per default this will chainload `sd:/wiiu/payloads/default/payload.elf`, but when holding B while loading this payload,  the target payload can be selected.
+Per default this will chainload `sd:/wiiu/payloads/default/payload.elf`, but when holding B while loading this payload, the target payload can be selected.
 
 Place payloads into seperate folder in `sd:/wiiu/payloads/` example:
 
@@ -12,6 +12,8 @@ sd:/wiiu/payloads/default/payload.elf
 sd:/wiiu/payloads/legacy_env/payload.elf
 sd:/wiiu/payloads/fw_img_loader/payload.elf
 ```
+
+If `sd:/wiiu/payloads/default/payload.elf` not present and user does NOT hold B while loading, no payload is loaded. This may lead to undefined behaviour on some payload.elf loaders.
 
 ## Building
 
