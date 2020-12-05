@@ -50,7 +50,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
 
     WHBLogUdpInit();
 
-    DEBUG_FUNCTION_LINE("Hello from payload");
+    DEBUG_FUNCTION_LINE("Hello from payload.elf multiloader");
 
     VPADReadError err;
     VPADStatus vpad_data;
@@ -192,12 +192,20 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
     VPADStatus vpad_data;
     VPADReadError error;
     int selected = 0;
+    std::string header = "Please choose your payload:";
     while (true) {
         // Clear screens
         OSScreenClearBufferEx(SCREEN_TV, 0);
         OSScreenClearBufferEx(SCREEN_DRC, 0);
 
         int pos = 0;
+
+
+        OSScreenPutFontEx(SCREEN_TV, 0, pos, header.c_str());
+        OSScreenPutFontEx(SCREEN_DRC, 0, pos, header.c_str());
+
+        pos += 2;
+
         int i = 0;
         for (auto const&[key, val] : payloads) {
             std::string text = StringTools::strfmt("%s %s", i == selected ? "> " : "  ", key.c_str());
