@@ -70,8 +70,9 @@ uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativ
 static bool CheckElfSectionLoadedBetween(void *data_elf, const char *name, uint32_t start_address, uint32_t end_address) {
     unsigned int target_addr = 0;
     unsigned int len = 0;
-    if (get_section(data_elf, name, &target_addr, &len, 0) > 0) {
+    if (get_section(data_elf, name, &len, &target_addr, 0) > 0) {        
         if (target_addr < start_address || target_addr + len > end_address) {
+            DEBUG_FUNCTION_LINE("ERROR: target_addr (%08X) < start_address (%08X) || target_addr + len (%08X) > end_address (%08X)", target_addr, start_address, target_addr + len, end_address);
             return false;
         }
     }
@@ -79,19 +80,19 @@ static bool CheckElfSectionLoadedBetween(void *data_elf, const char *name, uint3
 }
 
 static bool CheckElfLoadedBetween(void *data_elf, uint32_t start_address, uint32_t end_address) {
-    if (CheckElfSectionLoadedBetween(data_elf, ".text", start_address, end_address)) {
+    if (!CheckElfSectionLoadedBetween(data_elf, ".text", start_address, end_address)) {
         DEBUG_FUNCTION_LINE("ERROR: The .text would be loaded into a invalid location.");
         return false;
     }
-    if (CheckElfSectionLoadedBetween(data_elf, ".rodata", start_address, end_address)) {
+    if (!CheckElfSectionLoadedBetween(data_elf, ".rodata", start_address, end_address)) {
         DEBUG_FUNCTION_LINE("ERROR: The .rodata would be loaded into a invalid location.");
         return false;
     }
-    if (CheckElfSectionLoadedBetween(data_elf, ".data", start_address, end_address)) {
+    if (!CheckElfSectionLoadedBetween(data_elf, ".data", start_address, end_address)) {
         DEBUG_FUNCTION_LINE("ERROR: The .data would be loaded into a invalid location.");
         return false;
     }
-    if (CheckElfSectionLoadedBetween(data_elf, ".bss", start_address, end_address)) {
+    if (!CheckElfSectionLoadedBetween(data_elf, ".bss", start_address, end_address)) {
         DEBUG_FUNCTION_LINE("ERROR: The .bss would be loaded into a invalid location.");
         return false;
     }
