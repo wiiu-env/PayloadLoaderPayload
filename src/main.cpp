@@ -14,10 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
-
+ 
+#include <malloc.h>
 #include <cstdint>
 #include <coreinit/dynload.h>
 #include <coreinit/screen.h>
+#include <coreinit/memexpheap.h>
 
 #include "utils/ElfUtils.h"
 #include "utils/logger.h"
@@ -41,10 +43,13 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
 extern "C" void __init_wut();
 extern "C" void __fini_wut();
+uint32_t memory_start = 0;
 
 extern "C" uint32_t start_wrapper(int argc, char **argv) {
     doKernelSetup();
     InitFunctionPointers();
+
+     memory_start = (uint32_t) malloc(1024);
 
     __init_wut();
 
@@ -79,13 +84,27 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     WHBLogUdpDeinit();
 
     __fini_wut();
-
+    
     revertKernelHook();
 
     return entryPoint;
 }
 extern "C" int _start(int argc, char **argv) {
     uint32_t entryPoint = start_wrapper(argc, argv);
+    
+    // Somewhere in this loader is a memory leak.
+    // This is a hacky solution to free that memory.
+    uint32_t head_end = (uint32_t) malloc(1024);      
+    MEMExpHeapBlock *curUsedBlock = (MEMExpHeapBlock *) (head_end - 0x14);
+    while (curUsedBlock != 0) {        
+        curUsedBlock = curUsedBlock->prev;
+        free(&curUsedBlock[1]);
+        
+        if(((uint32_t) &curUsedBlock[1]) == memory_start){
+            break;
+        }
+    }
+
     int res = -1;
     if (entryPoint != 0) {
         res = ((int (*)(int, char **)) entryPoint)(argc, argv);
@@ -171,13 +190,13 @@ std::vector<std::string> readDirFull(const char *base_path, const char *path, FS
 
 
 std::string PayloadSelectionScreen(const std::map<std::string, std::string> &payloads) {
-    int32_t screen_buf0_size = 0;
-
     // Init screen and screen buffers
     OSScreenInit();
-    screen_buf0_size = OSScreenGetBufferSizeEx(SCREEN_TV);
-    OSScreenSetBufferEx(SCREEN_TV, (void *) 0xF4000000);
-    OSScreenSetBufferEx(SCREEN_DRC, (void *) (0xF4000000 + screen_buf0_size));
+    uint32_t screen_buf0_size = OSScreenGetBufferSizeEx(SCREEN_TV);
+    uint32_t screen_buf1_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
+    uint8_t * screenBuffer = (uint8_t*) memalign(0x100, screen_buf0_size + screen_buf1_size);
+    OSScreenSetBufferEx(SCREEN_TV, (void *)screenBuffer);
+    OSScreenSetBufferEx(SCREEN_DRC, (void *)(screenBuffer + screen_buf0_size));
 
     OSScreenEnableEx(SCREEN_TV, 1);
     OSScreenEnableEx(SCREEN_DRC, 1);
@@ -244,5 +263,6 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
         }
         i++;
     }
+    free(screenBuffer);
     return "";
 }
