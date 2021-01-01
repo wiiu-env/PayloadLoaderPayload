@@ -128,7 +128,7 @@ std::map<std::string, std::string> get_all_payloads(const char *relativefilepath
 
     sdRootPath = WHBGetSdCardMountPath();
 
-    FSAddClient(&client, -1);
+    FSAddClient(&client, FS_ERROR_FLAG_ALL);
     clientAdded = true;
 
     FSInitCmdBlock(&cmd);
@@ -157,7 +157,7 @@ std::map<std::string, std::string> get_all_payloads(const char *relativefilepath
     exit:
     WHBUnmountSdCard();
     if (clientAdded) {
-        FSDelClient(&client, -1);
+        FSDelClient(&client, FS_ERROR_FLAG_ALL);
     }
     return result;
 }
@@ -167,10 +167,10 @@ std::vector<std::string> readDirFull(const char *base_path, const char *path, FS
     FSStatus status;
     FSDirectoryHandle handle;
     std::vector<std::string> result;
-    if (FSOpenDir(&client, &cmd, full_dir_path.c_str(), &handle, -1) == FS_STATUS_OK) {
+    if (FSOpenDir(&client, &cmd, full_dir_path.c_str(), &handle, FS_ERROR_FLAG_ALL) == FS_STATUS_OK) {
         FSDirectoryEntry entry;
         while (true) {
-            status = FSReadDir(&client, &cmd, handle, &entry, -1);
+            status = FSReadDir(&client, &cmd, handle, &entry, FS_ERROR_FLAG_ALL);
             if (status < 0) {
                 break;
             }
