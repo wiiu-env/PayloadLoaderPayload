@@ -95,14 +95,15 @@ extern "C" int _start(int argc, char **argv) {
     // Somewhere in this loader is a memory leak.
     // This is a hacky solution to free that memory.
     uint32_t head_end = (uint32_t) malloc(1024);      
-    MEMExpHeapBlock *curUsedBlock = (MEMExpHeapBlock *) (head_end - 0x14);
+    MEMExpHeapBlock *prevBlock, *curUsedBlock = (MEMExpHeapBlock *) (head_end - 0x14);
     while (curUsedBlock != 0) {        
-        curUsedBlock = curUsedBlock->prev;
+        prevBlock = curUsedBlock->prev;
         free(&curUsedBlock[1]);
         
         if(((uint32_t) &curUsedBlock[1]) == memory_start){
             break;
         }
+        curUsedBlock = prevBlock;
     }
 
     int res = -1;
@@ -256,6 +257,7 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
         OSSleepTicks(OSMillisecondsToTicks(16));
     }
+    free(screenBuffer);
     int i = 0;
     for (auto const&[key, val] : payloads) {
         if (i == selected) {
@@ -263,6 +265,5 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
         }
         i++;
     }
-    free(screenBuffer);
     return "";
 }
