@@ -23,4 +23,4 @@ SECTIONS {
 	}
 }
 
-ASSERT((SIZEOF(.text) + SIZEOF(.data)) < 0x30000, "elf is too big");
+ASSERT((SIZEOF(.text) + SIZEOF(.data)) < 0x2F000, "elf is too big");
