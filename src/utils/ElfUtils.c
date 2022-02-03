@@ -1,20 +1,20 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <coreinit/debug.h>
 #include <coreinit/cache.h>
+#include <coreinit/debug.h>
 #include <coreinit/memdefaultheap.h>
-#include <whb/sdcard.h>
+#include <stdbool.h>
+#include <utils/logger.h>
 #include <whb/file.h>
 #include <whb/log.h>
-#include <utils/logger.h>
-#include <stdbool.h>
+#include <whb/sdcard.h>
 
 #include "elf_abi.h"
 
 int32_t LoadFileToMem(const char *relativefilepath, char **fileOut, uint32_t *sizeOut) {
     char path[256];
-    int result = 0;
+    int result             = 0;
     const char *sdRootPath = "";
     if (!WHBMountSdCard()) {
         DEBUG_FUNCTION_LINE("Failed to mount SD Card...");
@@ -34,7 +34,7 @@ int32_t LoadFileToMem(const char *relativefilepath, char **fileOut, uint32_t *si
         goto exit;
     }
 
-    exit:
+exit:
     WHBUnmountSdCard();
     WHBDeInitFileSystem();
     return result;
@@ -47,7 +47,7 @@ static bool CheckElfLoadedBetween(void *data_elf, uint32_t start_address, uint32
 static unsigned int get_section(void *data, const char *name, unsigned int *size, unsigned int *addr, int fail_on_not_found);
 
 uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativePath) {
-    char *elf_data = NULL;
+    char *elf_data    = NULL;
     uint32_t fileSize = 0;
     if (LoadFileToMem(relativePath, &elf_data, &fileSize) != 0) {
         return 0;
@@ -69,8 +69,8 @@ uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativ
 
 static bool CheckElfSectionLoadedBetween(void *data_elf, const char *name, uint32_t start_address, uint32_t end_address) {
     unsigned int target_addr = 0;
-    unsigned int len = 0;
-    if (get_section(data_elf, name, &len, &target_addr, 0) > 0) {        
+    unsigned int len         = 0;
+    if (get_section(data_elf, name, &len, &target_addr, 0) > 0) {
         if (target_addr < start_address || target_addr + len > end_address) {
             DEBUG_FUNCTION_LINE("ERROR: target_addr (%08X) < start_address (%08X) || target_addr + len (%08X) > end_address (%08X)", target_addr, start_address, target_addr + len, end_address);
             return false;
@@ -102,10 +102,7 @@ static bool CheckElfLoadedBetween(void *data_elf, uint32_t start_address, uint32
 static unsigned int get_section(void *data, const char *name, unsigned int *size, unsigned int *addr, int fail_on_not_found) {
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
 
-    if (!data
-        || !IS_ELF (*ehdr)
-        || (ehdr->e_type != ET_EXEC)
-        || (ehdr->e_machine != EM_PPC)) {
+    if (!data || !IS_ELF(*ehdr) || (ehdr->e_type != ET_EXEC) || (ehdr->e_machine != EM_PPC)) {
         OSFatal("Invalid elf file");
     }
 
@@ -137,9 +134,9 @@ static unsigned int get_section(void *data, const char *name, unsigned int *size
 static void InstallMain(void *data_elf) {
     // get .text section
     unsigned int main_text_addr = 0;
-    unsigned int main_text_len = 0;
+    unsigned int main_text_len  = 0;
     unsigned int section_offset = get_section(data_elf, ".text", &main_text_len, &main_text_addr, 1);
-    unsigned char *main_text = (unsigned char *)((uint32_t) data_elf + section_offset);
+    unsigned char *main_text    = (unsigned char *) ((uint32_t) data_elf + section_offset);
     /* Copy main .text to memory */
     if (section_offset > 0) {
         DEBUG_FUNCTION_LINE("Copy section to %08X from %08X (size: %d)", main_text_addr, main_text, main_text_len);
@@ -151,23 +148,22 @@ static void InstallMain(void *data_elf) {
 
     // get the .rodata section
     unsigned int main_rodata_addr = 0;
-    unsigned int main_rodata_len = 0;
-    section_offset = get_section(data_elf, ".rodata", &main_rodata_len, &main_rodata_addr, 0);
+    unsigned int main_rodata_len  = 0;
+    section_offset                = get_section(data_elf, ".rodata", &main_rodata_len, &main_rodata_addr, 0);
     if (section_offset > 0) {
-        unsigned char *main_rodata = (unsigned char *)((uint32_t) data_elf + section_offset);
+        unsigned char *main_rodata = (unsigned char *) ((uint32_t) data_elf + section_offset);
         /* Copy main rodata to memory */
         memcpy((void *) (main_rodata_addr), (void *) main_rodata, main_rodata_len);
         DCFlushRange((void *) main_rodata_addr, main_rodata_len);
         ICInvalidateRange((void *) main_rodata_addr, main_rodata_len);
-
     }
 
     // get the .data section
     unsigned int main_data_addr = 0;
-    unsigned int main_data_len = 0;
-    section_offset = get_section(data_elf, ".data", &main_data_len, &main_data_addr, 0);
+    unsigned int main_data_len  = 0;
+    section_offset              = get_section(data_elf, ".data", &main_data_len, &main_data_addr, 0);
     if (section_offset > 0) {
-        unsigned char *main_data = (unsigned char *)((uint32_t) data_elf + section_offset);
+        unsigned char *main_data = (unsigned char *) ((uint32_t) data_elf + section_offset);
         /* Copy main data to memory */
         memcpy((void *) (main_data_addr), (void *) main_data, main_data_len);
         DCFlushRange((void *) main_data_addr, main_data_len);
@@ -176,14 +172,13 @@ static void InstallMain(void *data_elf) {
 
     // get the .bss section
     unsigned int main_bss_addr = 0;
-    unsigned int main_bss_len = 0;
-    section_offset = get_section(data_elf, ".bss", &main_bss_len, &main_bss_addr, 0);
+    unsigned int main_bss_len  = 0;
+    section_offset             = get_section(data_elf, ".bss", &main_bss_len, &main_bss_addr, 0);
     if (section_offset > 0) {
-        unsigned char *main_bss = (unsigned char *)((uint32_t) data_elf + section_offset);
+        unsigned char *main_bss = (unsigned char *) ((uint32_t) data_elf + section_offset);
         /* Copy main data to memory */
         memcpy((void *) (main_bss_addr), (void *) main_bss, main_bss_len);
         DCFlushRange((void *) main_bss_addr, main_bss_len);
         ICInvalidateRange((void *) main_bss_addr, main_bss_len);
     }
-
 }
