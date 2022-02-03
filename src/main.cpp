@@ -14,26 +14,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
- 
-#include <malloc.h>
-#include <cstdint>
-#include <coreinit/dynload.h>
-#include <coreinit/screen.h>
-#include <coreinit/memexpheap.h>
 
-#include "utils/ElfUtils.h"
-#include "utils/logger.h"
+#include <coreinit/dynload.h>
+#include <coreinit/memexpheap.h>
+#include <coreinit/screen.h>
+#include <cstdint>
+#include <malloc.h>
+
 #include "dynamic.h"
 #include "kernel.h"
-#include <whb/log_udp.h>
+#include "utils/ElfUtils.h"
+#include "utils/logger.h"
 #include <coreinit/filesystem.h>
-#include <whb/sdcard.h>
-#include <sys/stat.h>
-#include <string>
-#include <vpad/input.h>
-#include <vector>
 #include <map>
+#include <string>
+#include <sys/stat.h>
 #include <utils/StringTools.h>
+#include <vector>
+#include <vpad/input.h>
+#include <whb/log_udp.h>
+#include <whb/sdcard.h>
 
 std::map<std::string, std::string> get_all_payloads(const char *relativefilepath);
 
@@ -49,7 +49,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     doKernelSetup();
     InitFunctionPointers();
 
-     memory_start = (uint32_t) malloc(1024);
+    memory_start = (uint32_t) malloc(1024);
 
     __init_wut();
 
@@ -84,23 +84,23 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     WHBLogUdpDeinit();
 
     __fini_wut();
-    
+
     revertKernelHook();
 
     return entryPoint;
 }
 extern "C" int _start(int argc, char **argv) {
     uint32_t entryPoint = start_wrapper(argc, argv);
-    
+
     // Somewhere in this loader is a memory leak.
     // This is a hacky solution to free that memory.
-    uint32_t head_end = (uint32_t) malloc(1024);      
+    uint32_t head_end             = (uint32_t) malloc(1024);
     MEMExpHeapBlock *curUsedBlock = (MEMExpHeapBlock *) (head_end - 0x14);
-    while (curUsedBlock != 0) {        
+    while (curUsedBlock != 0) {
         curUsedBlock = curUsedBlock->prev;
         free(&curUsedBlock[1]);
-        
-        if(((uint32_t) &curUsedBlock[1]) == memory_start){
+
+        if (((uint32_t) &curUsedBlock[1]) == memory_start) {
             break;
         }
     }
@@ -142,7 +142,7 @@ std::map<std::string, std::string> get_all_payloads(const char *relativefilepath
         for (auto &child : files_inFolder) {
             if (StringTools::EndsWith(child, "payload.elf")) {
                 std::vector<std::string> folders = StringTools::stringSplit(e, "/");
-                std::string folder_name = e;
+                std::string folder_name          = e;
                 if (folders.size() > 1) {
                     folder_name = folders.at(folders.size() - 1);
                 }
@@ -154,7 +154,7 @@ std::map<std::string, std::string> get_all_payloads(const char *relativefilepath
         }
     }
 
-    exit:
+exit:
     WHBUnmountSdCard();
     if (clientAdded) {
         FSDelClient(&client, FS_ERROR_FLAG_ALL);
@@ -194,9 +194,9 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
     OSScreenInit();
     uint32_t screen_buf0_size = OSScreenGetBufferSizeEx(SCREEN_TV);
     uint32_t screen_buf1_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
-    uint8_t * screenBuffer = (uint8_t*) memalign(0x100, screen_buf0_size + screen_buf1_size);
-    OSScreenSetBufferEx(SCREEN_TV, (void *)screenBuffer);
-    OSScreenSetBufferEx(SCREEN_DRC, (void *)(screenBuffer + screen_buf0_size));
+    uint8_t *screenBuffer     = (uint8_t *) memalign(0x100, screen_buf0_size + screen_buf1_size);
+    OSScreenSetBufferEx(SCREEN_TV, (void *) screenBuffer);
+    OSScreenSetBufferEx(SCREEN_DRC, (void *) (screenBuffer + screen_buf0_size));
 
     OSScreenEnableEx(SCREEN_TV, 1);
     OSScreenEnableEx(SCREEN_DRC, 1);
@@ -210,7 +210,7 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
     VPADStatus vpad_data;
     VPADReadError error;
-    int selected = 0;
+    int selected       = 0;
     std::string header = "Please choose your payload:";
     while (true) {
         // Clear screens
@@ -226,7 +226,7 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
         pos += 2;
 
         int i = 0;
-        for (auto const&[key, val] : payloads) {
+        for (auto const &[key, val] : payloads) {
             std::string text = StringTools::strfmt("%s %s", i == selected ? "> " : "  ", key.c_str());
             OSScreenPutFontEx(SCREEN_TV, 0, pos, text.c_str());
             OSScreenPutFontEx(SCREEN_DRC, 0, pos, text.c_str());
@@ -257,7 +257,7 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
         OSSleepTicks(OSMillisecondsToTicks(16));
     }
     int i = 0;
-    for (auto const&[key, val] : payloads) {
+    for (auto const &[key, val] : payloads) {
         if (i == selected) {
             return val;
         }
