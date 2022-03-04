@@ -24,6 +24,7 @@
 
 #include "dynamic.h"
 #include "kernel.h"
+#include "utils/DirList.h"
 #include "utils/ElfUtils.h"
 #include "utils/logger.h"
 #include <coreinit/filesystem.h>
@@ -33,13 +34,10 @@
 #include <utils/StringTools.h>
 #include <vector>
 #include <vpad/input.h>
-#include <whb/log_udp.h>
 #include <whb/log_cafe.h>
-#include <whb/sdcard.h>
+#include <whb/log_udp.h>
 
 std::map<std::string, std::string> get_all_payloads(const char *relativefilepath);
-
-std::vector<std::string> readDirFull(const char *base_path, const char *path, FSCmdBlock &cmd, FSClient &client, int filter);
 
 std::string PayloadSelectionScreen(const std::map<std::string, std::string> &payloads);
 
@@ -96,6 +94,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
 
     return entryPoint;
 }
+
 extern "C" int _start(int argc, char **argv) {
     uint32_t entryPoint = start_wrapper(argc, argv);
 
@@ -125,87 +124,34 @@ extern "C" int _start(int argc, char **argv) {
 
 std::map<std::string, std::string> get_all_payloads(const char *relativefilepath) {
     std::map<std::string, std::string> result;
-    const char *sdRootPath = "";
     std::vector<std::string> payload_folders;
     std::vector<std::string> files_inFolder;
-    bool clientAdded = false;
-    if (!WHBMountSdCard()) {
-        DEBUG_FUNCTION_LINE("Failed to mount SD Card...");
-        goto exit;
-    }
 
-    FSCmdBlock cmd;
-    FSClient client;
+    DirList dirList(std::string("fs:/vol/external01/") + relativefilepath, nullptr, DirList::Dirs, 1);
+    dirList.SortList();
 
-    sdRootPath = WHBGetSdCardMountPath();
+    for (int i = 0; i < dirList.GetFilecount(); i++) {
+        auto curDirName = dirList.GetFilename(i);
+        auto curPath    = dirList.GetFilepath(i);
+        DEBUG_FUNCTION_LINE("Reading path %s", curDirName);
 
-    FSAddClient(&client, FS_ERROR_FLAG_ALL);
-    clientAdded = true;
-
-    FSInitCmdBlock(&cmd);
-
-    payload_folders = readDirFull(sdRootPath, relativefilepath, cmd, client, 1);
-
-    for (auto &e : payload_folders) {
-        DEBUG_FUNCTION_LINE("Reading path %s", e.c_str());
-        files_inFolder = readDirFull(sdRootPath, e.c_str(), cmd, client, 2);
-
-        for (auto &child : files_inFolder) {
-            if (StringTools::EndsWith(child, "payload.elf")) {
-                std::vector<std::string> folders = StringTools::stringSplit(e, "/");
-                std::string folder_name          = e;
-                if (folders.size() > 1) {
-                    folder_name = folders.at(folders.size() - 1);
-                }
-
-                DEBUG_FUNCTION_LINE("%s is valid!", folder_name.c_str());
-                result[folder_name] = child;
-                break;
-            }
+        auto payloadPath = std::string(curPath) + "/payload.elf";
+        auto fd          = fopen(payloadPath.c_str(), "r");
+        if (fd) {
+            fclose(fd);
+            result[curDirName] = payloadPath;
         }
     }
 
-exit:
-    WHBUnmountSdCard();
-    if (clientAdded) {
-        FSDelClient(&client, FS_ERROR_FLAG_ALL);
-    }
     return result;
 }
-
-std::vector<std::string> readDirFull(const char *base_path, const char *path, FSCmdBlock &cmd, FSClient &client, int filter) {
-    std::string full_dir_path = StringTools::strfmt("%s/%s", base_path, path);
-    FSStatus status;
-    FSDirectoryHandle handle;
-    std::vector<std::string> result;
-    if (FSOpenDir(&client, &cmd, full_dir_path.c_str(), &handle, FS_ERROR_FLAG_ALL) == FS_STATUS_OK) {
-        FSDirectoryEntry entry;
-        while (true) {
-            status = FSReadDir(&client, &cmd, handle, &entry, FS_ERROR_FLAG_ALL);
-            if (status < 0) {
-                break;
-            }
-            std::string filepath = StringTools::strfmt("%s/%s", path, entry.name);
-
-            if (entry.info.flags & FS_STAT_DIRECTORY && filter <= 1) {
-                result.push_back(filepath);
-            } else if (filter == 0 || filter == 2) {
-                result.push_back(filepath);
-            }
-        }
-    } else {
-        DEBUG_FUNCTION_LINE("Failed to open dir %s", path);
-    }
-    return result;
-}
-
 
 std::string PayloadSelectionScreen(const std::map<std::string, std::string> &payloads) {
     // Init screen and screen buffers
     OSScreenInit();
     uint32_t screen_buf0_size = OSScreenGetBufferSizeEx(SCREEN_TV);
     uint32_t screen_buf1_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
-    uint8_t *screenBuffer     = (uint8_t *) memalign(0x100, screen_buf0_size + screen_buf1_size);
+    auto *screenBuffer        = (uint8_t *) memalign(0x100, screen_buf0_size + screen_buf1_size);
     OSScreenSetBufferEx(SCREEN_TV, (void *) screenBuffer);
     OSScreenSetBufferEx(SCREEN_DRC, (void *) (screenBuffer + screen_buf0_size));
 
