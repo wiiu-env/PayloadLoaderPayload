@@ -57,6 +57,7 @@ IMPORT(OSCompareAndSwapAtomicEx);
 IMPORT(OSCompareAndSwapAtomic);
 IMPORT(OSGetThreadSpecific);
 IMPORT(OSSetThreadSpecific);
+IMPORT(OSReport);
 
 IMPORT(exit);
 IMPORT(_Exit);

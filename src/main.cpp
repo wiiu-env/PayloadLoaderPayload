@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2018-2020 Maschell
+ * Copyright (C) 2018-2022 Maschell
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
+#include <coreinit/debug.h>
 #include <coreinit/dynload.h>
 #include <coreinit/memexpheap.h>
 #include <coreinit/screen.h>
@@ -43,13 +44,16 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
 extern "C" void __init_wut();
 extern "C" void __fini_wut();
-uint32_t memory_start = 0;
+MEMExpHeapBlock *memory_start = nullptr;
 
 extern "C" uint32_t start_wrapper(int argc, char **argv) {
     doKernelSetup();
     InitFunctionPointers();
 
-    memory_start = (uint32_t) malloc(1024);
+    // Save last entry on mem2 heap to detect leaked memory
+    MEMHeapHandle mem2_heap_handle = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM2);
+    auto heap                      = (MEMExpHeap *) mem2_heap_handle;
+    memory_start                   = heap->usedList.tail;
 
     __init_wut();
 
@@ -92,17 +96,21 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
 extern "C" int _start(int argc, char **argv) {
     uint32_t entryPoint = start_wrapper(argc, argv);
 
-    // Somewhere in this loader is a memory leak.
-    // This is a hacky solution to free that memory.
-    uint32_t head_end             = (uint32_t) malloc(1024);
-    MEMExpHeapBlock *curUsedBlock = (MEMExpHeapBlock *) (head_end - 0x14);
-    while (curUsedBlock != 0) {
-        curUsedBlock = curUsedBlock->prev;
-        free(&curUsedBlock[1]);
-
-        if (((uint32_t) &curUsedBlock[1]) == memory_start) {
-            break;
+    MEMHeapHandle mem2_heap_handle = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM2);
+    auto heap                      = (MEMExpHeap *) mem2_heap_handle;
+    // free leaked memory
+    if (memory_start) {
+        int leak_count = 0;
+        while (true) {
+            MEMExpHeapBlock *memory_end = heap->usedList.tail;
+            if (memory_end == memory_start) {
+                break;
+            }
+            auto mem_ptr = &memory_end[1]; // &memory_end + sizeof(MEMExpHeapBlock);
+            free(mem_ptr);
+            leak_count++;
         }
+        OSReport("Freed %d leaked memory blocks\n", leak_count);
     }
 
     int res = -1;
@@ -219,7 +227,6 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
         int pos = 0;
 
-
         OSScreenPutFontEx(SCREEN_TV, 0, pos, header.c_str());
         OSScreenPutFontEx(SCREEN_DRC, 0, pos, header.c_str());
 
@@ -256,6 +263,9 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
 
         OSSleepTicks(OSMillisecondsToTicks(16));
     }
+
+    free(screenBuffer);
+
     int i = 0;
     for (auto const &[key, val] : payloads) {
         if (i == selected) {
@@ -263,6 +273,5 @@ std::string PayloadSelectionScreen(const std::map<std::string, std::string> &pay
         }
         i++;
     }
-    free(screenBuffer);
     return "";
 }
