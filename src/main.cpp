@@ -34,6 +34,7 @@
 #include <vector>
 #include <vpad/input.h>
 #include <whb/log_udp.h>
+#include <whb/log_cafe.h>
 #include <whb/sdcard.h>
 
 std::map<std::string, std::string> get_all_payloads(const char *relativefilepath);
@@ -58,6 +59,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     __init_wut();
 
     WHBLogUdpInit();
+    WHBLogCafeInit();
 
     DEBUG_FUNCTION_LINE("Hello from payload.elf multiloader");
 
@@ -86,6 +88,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     }
 
     WHBLogUdpDeinit();
+    WHBLogCafeDeinit();
 
     __fini_wut();
 
