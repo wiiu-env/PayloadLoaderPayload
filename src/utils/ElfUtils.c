@@ -1,43 +1,68 @@
-#include <stdio.h>
-#include <string.h>
-
+#include "utils/logger.h"
 #include <coreinit/cache.h>
 #include <coreinit/debug.h>
 #include <coreinit/memdefaultheap.h>
+#include <fcntl.h>
+#include <malloc.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <utils/logger.h>
-#include <whb/file.h>
-#include <whb/log.h>
-#include <whb/sdcard.h>
 
 #include "elf_abi.h"
 
-int32_t LoadFileToMem(const char *relativefilepath, char **fileOut, uint32_t *sizeOut) {
-    char path[256];
-    int result             = 0;
-    const char *sdRootPath = "";
-    if (!WHBMountSdCard()) {
-        DEBUG_FUNCTION_LINE("Failed to mount SD Card...");
-        result = -1;
-        goto exit;
+int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size) {
+    //! always initialze input
+    *inbuffer = NULL;
+    if (size) {
+        *size = 0;
     }
 
-    sdRootPath = WHBGetSdCardMountPath();
-    sprintf(path, "%s/%s", sdRootPath, relativefilepath);
-
-    DEBUG_FUNCTION_LINE("Loading file %s.", path);
-
-    *fileOut = WHBReadWholeFile(path, sizeOut);
-    if (!(*fileOut)) {
-        result = -2;
-        DEBUG_FUNCTION_LINE("WHBReadWholeFile(%s) returned NULL", path);
-        goto exit;
+    int32_t iFd = open(filepath, O_RDONLY);
+    if (iFd < 0) {
+        return -1;
     }
 
-exit:
-    WHBUnmountSdCard();
-    WHBDeInitFileSystem();
-    return result;
+    uint32_t filesize = lseek(iFd, 0, SEEK_END);
+    lseek(iFd, 0, SEEK_SET);
+
+    uint8_t *buffer = (uint8_t *) memalign(0x40, (filesize + 0x3F) & ~(0x3F));
+    if (buffer == NULL) {
+        close(iFd);
+        return -2;
+    }
+
+    uint32_t blocksize = 0x20000;
+    uint32_t done      = 0;
+    int32_t readBytes  = 0;
+
+    while (done < filesize) {
+        if (done + blocksize > filesize) {
+            blocksize = filesize - done;
+        }
+        readBytes = read(iFd, buffer + done, blocksize);
+        if (readBytes <= 0)
+            break;
+        done += readBytes;
+    }
+
+    close(iFd);
+
+    if (done != filesize) {
+        free(buffer);
+        buffer = NULL;
+        return -3;
+    }
+
+    *inbuffer = buffer;
+
+    //! size is optional input
+    if (size) {
+        *size = filesize;
+    }
+
+    return filesize;
 }
 
 static void InstallMain(void *data_elf);
@@ -49,7 +74,7 @@ static unsigned int get_section(void *data, const char *name, unsigned int *size
 uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativePath) {
     char *elf_data    = NULL;
     uint32_t fileSize = 0;
-    if (LoadFileToMem(relativePath, &elf_data, &fileSize) != 0) {
+    if (LoadFileToMem(relativePath, &elf_data, &fileSize) < 0) {
         return 0;
     }
 
@@ -62,7 +87,7 @@ uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativ
 
     uint32_t res = ehdr->e_entry;
 
-    MEMFreeToDefaultHeap((void *) elf_data);
+    free((void *) elf_data);
 
     return res;
 }
