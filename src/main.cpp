@@ -41,8 +41,8 @@ std::map<std::string, std::string> get_all_payloads(const char *relativefilepath
 
 std::string PayloadSelectionScreen(const std::map<std::string, std::string> &payloads);
 
-extern "C" void __init_wut();
-extern "C" void __fini_wut();
+extern "C" void init_wut();
+extern "C" void fini_wut();
 MEMExpHeapBlock *memory_start = nullptr;
 
 extern "C" uint32_t start_wrapper(int argc, char **argv) {
@@ -54,7 +54,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     auto heap                      = (MEMExpHeap *) mem2_heap_handle;
     memory_start                   = heap->usedList.tail;
 
-    __init_wut();
+    init_wut();
 
     WHBLogUdpInit();
     WHBLogCafeInit();
@@ -88,7 +88,7 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     WHBLogUdpDeinit();
     WHBLogCafeDeinit();
 
-    __fini_wut();
+    fini_wut();
 
     revertKernelHook();
 
