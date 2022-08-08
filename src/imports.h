@@ -58,6 +58,7 @@ IMPORT(OSCompareAndSwapAtomic);
 IMPORT(OSGetThreadSpecific);
 IMPORT(OSSetThreadSpecific);
 IMPORT(OSReport);
+IMPORT(OSSwapAtomic);
 
 IMPORT(exit);
 IMPORT(_Exit);
@@ -92,6 +93,7 @@ IMPORT(FSChangeDir);
 IMPORT(FSGetFreeSpaceSize);
 IMPORT(FSGetStat);
 IMPORT(FSRemove);
+IMPORT(FSOpenFileEx);
 IMPORT(FSOpenFile);
 IMPORT(FSCloseFile);
 IMPORT(FSOpenDir);
