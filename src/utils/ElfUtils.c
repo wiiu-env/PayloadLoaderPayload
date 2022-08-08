@@ -24,8 +24,13 @@ int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size) 
         return -1;
     }
 
-    uint32_t filesize = lseek(iFd, 0, SEEK_END);
-    lseek(iFd, 0, SEEK_SET);
+    struct stat file_stat;
+    int rc = fstat(iFd, &file_stat);
+    if (rc < 0) {
+        close(iFd);
+        return -4;
+    }
+    uint32_t filesize = file_stat.st_size;
 
     uint8_t *buffer = (uint8_t *) memalign(0x40, (filesize + 0x3F) & ~(0x3F));
     if (buffer == NULL) {
@@ -33,7 +38,7 @@ int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size) 
         return -2;
     }
 
-    uint32_t blocksize = 0x20000;
+    uint32_t blocksize = 0x80000;
     uint32_t done      = 0;
     int32_t readBytes  = 0;
 
@@ -42,8 +47,9 @@ int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size) 
             blocksize = filesize - done;
         }
         readBytes = read(iFd, buffer + done, blocksize);
-        if (readBytes <= 0)
+        if (readBytes <= 0) {
             break;
+        }
         done += readBytes;
     }
 
@@ -74,7 +80,7 @@ static unsigned int get_section(void *data, const char *name, unsigned int *size
 uint32_t load_loader_elf_from_sd(unsigned char *baseAddress, const char *relativePath) {
     char *elf_data    = NULL;
     uint32_t fileSize = 0;
-    if (LoadFileToMem(relativePath, &elf_data, &fileSize) < 0) {
+    if (LoadFileToMem(relativePath, (uint8_t **) &elf_data, &fileSize) < 0) {
         return 0;
     }
 
