@@ -15,27 +15,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-#include <coreinit/debug.h>
-#include <coreinit/dynload.h>
-#include <coreinit/memexpheap.h>
-#include <coreinit/screen.h>
-#include <cstdint>
-#include <malloc.h>
-
 #include "dynamic.h"
 #include "kernel.h"
 #include "utils/DirList.h"
 #include "utils/ElfUtils.h"
 #include "utils/logger.h"
+#include <coreinit/debug.h>
+#include <coreinit/dynload.h>
 #include <coreinit/filesystem.h>
+#include <coreinit/memexpheap.h>
+#include <coreinit/screen.h>
+#include <cstdint>
+#include <malloc.h>
 #include <map>
 #include <string>
 #include <sys/stat.h>
 #include <utils/StringTools.h>
 #include <vector>
 #include <vpad/input.h>
-#include <whb/log_cafe.h>
-#include <whb/log_udp.h>
 
 std::map<std::string, std::string> get_all_payloads(const char *relativefilepath);
 
@@ -56,10 +53,9 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
 
     init_wut();
 
-    WHBLogUdpInit();
-    WHBLogCafeInit();
+    initLogging();
 
-    DEBUG_FUNCTION_LINE("Hello from payload.elf multiloader");
+    DEBUG_FUNCTION_LINE_VERBOSE("Hello from payload.elf multiloader");
 
     VPADReadError err;
     VPADStatus vpad_data;
@@ -74,19 +70,18 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     std::string payload_path = "wiiu/payloads/default/payload.elf";
     if ((btn & VPAD_BUTTON_B) == VPAD_BUTTON_B) {
         payload_path = PayloadSelectionScreen(payloads);
-        DEBUG_FUNCTION_LINE("Selected %s", payload_path.c_str());
+        DEBUG_FUNCTION_LINE_VERBOSE("Selected %s", payload_path.c_str());
     }
 
     entryPoint = load_loader_elf_from_sd(nullptr, payload_path.c_str());
 
     if (entryPoint != 0) {
-        DEBUG_FUNCTION_LINE("loaded payload entrypoint at %08X", entryPoint);
+        DEBUG_FUNCTION_LINE("Loaded payload entrypoint at %08X", entryPoint);
     } else {
-        DEBUG_FUNCTION_LINE("failed to load elf");
+        DEBUG_FUNCTION_LINE_ERR("Failed to load: %s", payload_path.c_str());
     }
 
-    WHBLogUdpDeinit();
-    WHBLogCafeDeinit();
+    deinitLogging();
 
     fini_wut();
 
@@ -112,7 +107,7 @@ extern "C" int _start(int argc, char **argv) {
             free(mem_ptr);
             leak_count++;
         }
-        OSReport("Freed %d leaked memory blocks\n", leak_count);
+        DEBUG_FUNCTION_LINE_INFO("Freed %d leaked memory blocks\n", leak_count);
     }
 
     int res = -1;
