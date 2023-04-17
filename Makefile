@@ -41,10 +41,21 @@ INCLUDES	:=  src
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-CFLAGS	:=  -std=c2x -g -Wall -O2 -ffunction-sections -DESPRESSO -mcpu=750 -meabi -mhard-float $(INCLUDE)
-CXXFLAGS := -std=c++20 -g -Wall -O2 -ffunction-sections -DESPRESSO -mcpu=750 -meabi -mhard-float $(INCLUDE)
+CFLAGS	:=	 -g -g -Wall -O2 -ffunction-sections $(MACHDEP) $(INCLUDE) -D__WIIU__
+CXXFLAGS	:= $(CFLAGS) -std=c++20
+CFLAGS	+=	-std=c2x 
 ASFLAGS	:= -mregnames
 LDFLAGS	:= -nostartfiles -Wl,--gc-sections,--allow-multiple-definition
+
+ifeq ($(DEBUG),1)
+CXXFLAGS += -DDEBUG -g
+CFLAGS += -DDEBUG -g
+endif
+
+ifeq ($(DEBUG),VERBOSE)
+CXXFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
+CFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
+endif
 
 #---------------------------------------------------------------------------------
 Q := @
