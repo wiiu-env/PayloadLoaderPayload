@@ -59,6 +59,7 @@ IMPORT(OSGetThreadSpecific);
 IMPORT(OSSetThreadSpecific);
 IMPORT(OSReport);
 IMPORT(OSSwapAtomic);
+IMPORT(OSIsDebuggerPresent);
 
 IMPORT(exit);
 IMPORT(_Exit);
