@@ -90,6 +90,10 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
     return entryPoint;
 }
 
+extern "C" struct _reent *__syscall_getreent(void) {
+    return _impure_ptr;
+}
+
 extern "C" int _start(int argc, char **argv) {
     uint32_t entryPoint = start_wrapper(argc, argv);
 
