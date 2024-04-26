@@ -57,11 +57,16 @@ extern "C" uint32_t start_wrapper(int argc, char **argv) {
 
     DEBUG_FUNCTION_LINE_VERBOSE("Hello from payload.elf multiloader");
 
-    VPADReadError err;
-    VPADStatus vpad_data;
-    VPADRead(VPAD_CHAN_0, &vpad_data, 1, &err);
-
-    uint32_t btn = vpad_data.hold | vpad_data.trigger;
+    VPADStatus vpadStatus{};
+    VPADReadError vpadError = VPAD_READ_UNINITIALIZED;
+    int btn                 = 0;
+    do {
+        if (VPADRead(VPAD_CHAN_0, &vpadStatus, 1, &vpadError) > 0 && vpadError == VPAD_READ_SUCCESS) {
+            btn = vpadStatus.trigger | vpadStatus.hold;
+        } else {
+            OSSleepTicks(OSMillisecondsToTicks(1));
+        }
+    } while (vpadError == VPAD_READ_NO_SAMPLES);
 
     std::map<std::string, std::string> payloads = get_all_payloads("wiiu/payloads");
 
