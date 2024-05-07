@@ -123,6 +123,7 @@ extern "C" int _start(int argc, char **argv) {
     if (entryPoint != 0) {
         res = ((int (*)(int, char **)) entryPoint)(argc, argv);
     }
+    _Exit(0);
     return res;
 }
 
